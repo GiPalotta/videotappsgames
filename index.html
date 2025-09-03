@@ -76,39 +76,64 @@
   <div id="resultado"></div>
 
   <script>
+    function extrairVideoId(url) {
+      try {
+        let videoId = null;
+        let u = new URL(url);
+
+        // Caso: youtube.com/watch?v=ID
+        if (u.searchParams.get("v")) {
+          videoId = u.searchParams.get("v");
+        }
+        // Caso: youtu.be/ID
+        else if (u.hostname.includes("youtu.be")) {
+          videoId = u.pathname.split("/")[1];
+        }
+        // Caso: youtube.com/shorts/ID
+        else if (u.pathname.includes("/shorts/")) {
+          videoId = u.pathname.split("/shorts/")[1];
+        }
+
+        // Remove parâmetros extras (ex: ?si=xxx)
+        if (videoId && videoId.includes("?")) {
+          videoId = videoId.split("?")[0];
+        }
+
+        return videoId;
+      } catch (e) {
+        return null;
+      }
+    }
+
     document.getElementById("formulario").addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const youtubeUrl = document.getElementById("youtubeUrl").value.trim();
       const resultado = document.getElementById("resultado");
 
-      // Verificação básica do domínio
-      if (!youtubeUrl.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//)) {
+      const videoId = extrairVideoId(youtubeUrl);
+
+      if (!videoId) {
         resultado.innerHTML = '<span class="erro">❌ Por favor, insira um link válido do YouTube.</span>';
         return;
       }
 
+      // Mensagem imediata para o usuário
+      resultado.innerHTML = `
+        ✅ Seu vídeo já está sendo processado, aguarde alguns minutos.<br>
+        📂 Veja seus vídeos aqui: <a href="https://drive.google.com/drive/u/0/folders/17wc_1YmdE2ZeAQfPvFy4la-pnJSm_08x" target="_blank">Google Drive</a>
+      `;
+
       try {
-        // Consulta ao oEmbed do YouTube para validar se o vídeo existe
-        const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(youtubeUrl)}&format=json`);
-        if (!resp.ok) throw new Error("Vídeo inválido");
-        await resp.json();
-
-        // Mensagem imediata para o usuário
-        resultado.innerHTML = `
-          ✅ Seu vídeo já está sendo processado, aguarde alguns minutos.<br>
-          📂 Veja seus vídeos aqui: <a href="https://drive.google.com/drive/u/0/folders/17wc_1YmdE2ZeAQfPvFy4la-pnJSm_08x" target="_blank">Google Drive</a>
-        `;
-
-        // Envio para o n8n
         await fetch("https://n8n.heavensttwr.com.br/webhook/youtube-to-drive", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({ youtubeUrl })
         });
-
       } catch (erro) {
-        resultado.innerHTML = '<span class="erro">❌ O link informado não corresponde a um vídeo existente no YouTube.</span>';
+        resultado.innerHTML = '<span class="erro">❌ Ocorreu um erro ao enviar o link. Tente novamente.</span>';
         console.error(erro);
       }
     });
