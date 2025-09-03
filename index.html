@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube → Google Drive</title>
+  <link rel="icon" href="https://www.youtube.com/s/desktop/7c98e2da/img/favicon_32.png" type="image/png">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #f4f6f9, #e6ebf2);
+      margin: 0;
+    }
+    h2 {
+      color: #222;
+      margin-bottom: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 380px;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    }
+    input[type="text"] {
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #resultado {
+      margin-top: 20px;
+      font-size: 15px;
+      text-align: center;
+    }
+    #resultado a {
+      color: #007bff;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    #resultado a:hover {
+      text-decoration: underline;
+    }
+    .erro {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Baixar do YouTube → Enviar para o Google Drive</h2>
+  <form id="formulario">
+    <input type="text" id="youtubeUrl" placeholder="Cole o link do YouTube aqui" required>
+    <button type="submit">Enviar</button>
+  </form>
+  <div id="resultado"></div>
+
+  <script>
+    document.getElementById("formulario").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const youtubeUrl = document.getElementById("youtubeUrl").value.trim();
+      const resultado = document.getElementById("resultado");
+
+      // Verificação básica do domínio
+      if (!youtubeUrl.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//)) {
+        resultado.innerHTML = '<span class="erro">❌ Por favor, insira um link válido do YouTube.</span>';
+        return;
+      }
+
+      try {
+        // Consulta ao oEmbed do YouTube para validar se o vídeo existe
+        const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(youtubeUrl)}&format=json`);
+        if (!resp.ok) throw new Error("Vídeo inválido");
+        await resp.json();
+
+        // Mensagem imediata para o usuário
+        resultado.innerHTML = `
+          ✅ Seu vídeo já está sendo processado, aguarde alguns minutos.<br>
+          📂 Veja seus vídeos aqui: <a href="https://drive.google.com/drive/u/0/folders/17wc_1YmdE2ZeAQfPvFy4la-pnJSm_08x" target="_blank">Google Drive</a>
+        `;
+
+        // Envio para o n8n
+        await fetch("https://n8n.heavensttwr.com.br/webhook/youtube-to-drive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ youtubeUrl })
+        });
+
+      } catch (erro) {
+        resultado.innerHTML = '<span class="erro">❌ O link informado não corresponde a um vídeo existente no YouTube.</span>';
+        console.error(erro);
+      }
+    });
+  </script>
+</body>
+</html>
